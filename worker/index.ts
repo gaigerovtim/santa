@@ -1,12 +1,13 @@
 /**
- * Воркер очередей. Этап 1: подключается к Redis и базе, слушает очереди preview и video.
- * Обработчики шагов конвейера появятся на этапах 4 и 6.
+ * Воркер очередей: preview (кадр-превью) и video (после оплаты).
+ * Обработчик очереди video появится на этапе 6.
  */
 import { Worker, type Job } from "bullmq";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { QUEUE_PREVIEW, QUEUE_VIDEO, type OrderJobData } from "@/lib/queue";
 import { redis } from "@/lib/redis";
+import { processPreview } from "./jobs/preview";
 
 async function notImplemented(job: Job<OrderJobData>) {
   throw new Error(`Обработчик очереди ${job.queueName} ещё не реализован (заказ ${job.data.orderId})`);
@@ -19,7 +20,7 @@ async function main() {
 
   // BullMQ сам возвращает в очередь задачи, «застрявшие» после падения воркера (stalled jobs).
   const workers = [
-    new Worker(QUEUE_PREVIEW, notImplemented, {
+    new Worker(QUEUE_PREVIEW, processPreview, {
       connection: redis(),
       concurrency: e.PREVIEW_CONCURRENCY,
     }),
