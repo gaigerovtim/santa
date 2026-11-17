@@ -1,26 +1,102 @@
 @import "tailwindcss";
 
-/* Цветовые токены из ТЗ («Визуальный стиль»). Полная дизайн-система — этап 2. */
-:root {
-  --color-night: #0e1424;
-  --color-surface: #182033;
-  --color-santa: #c8102e;
-  --color-garland: #f2c46d;
-  --color-text: #f5f1e8;
-  --color-muted: #a8b0c2;
+/*
+ * Дизайн-токены (ТЗ, «Визуальный стиль»). Стиль меняется здесь, в одном месте.
+ * Tailwind 4 берёт их из @theme: bg-night, text-garland, font-display и т. д.
+ */
+@theme {
+  /* Цвета */
+  --color-night: #0e1424; /* фон */
+  --color-surface: #182033; /* карточки, поверхности */
+  --color-surface-2: #212b42; /* приподнятые поверхности, рамки */
+  --color-line: #2c3752; /* тонкие линии */
+  --color-santa: #c8102e; /* главные кнопки */
+  --color-santa-hover: #a80d26;
+  --color-garland: #f2c46d; /* детали, свечение */
+  --color-text: #f5f1e8; /* основной текст */
+  --color-muted: #a8b0c2; /* приглушённый текст */
+  --color-success: #7fd39a;
+  --color-danger: #ff8a8a;
+
+  /* Шрифты (переменные --nf-* задаёт next/font в app/fonts.ts) */
+  --font-display: var(--nf-display), Georgia, "Times New Roman", serif;
+  --font-sans: var(--nf-sans), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--nf-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Скругления и тени */
+  --radius-card: 1.25rem;
+  --radius-button: 0.875rem;
+  --shadow-glow: 0 0 0 1px rgb(242 196 109 / 0.35), 0 8px 32px -6px rgb(242 196 109 / 0.45);
+  --shadow-glow-red: 0 0 0 1px rgb(255 120 120 / 0.25), 0 10px 36px -8px rgb(200 16 46 / 0.75);
+
+  /* Анимации */
+  --animate-rec: rec-blink 1.2s steps(2, start) infinite;
+  --animate-snow: snow-fall linear infinite;
+
+  @keyframes rec-blink {
+    to {
+      visibility: hidden;
+    }
+  }
+
+  @keyframes snow-fall {
+    from {
+      transform: translate3d(0, -10vh, 0);
+    }
+    to {
+      transform: translate3d(var(--snow-drift, 20px), 110vh, 0);
+    }
+  }
 }
 
-@theme inline {
-  --color-night: var(--color-night);
-  --color-surface: var(--color-surface);
-  --color-santa: var(--color-santa);
-  --color-garland: var(--color-garland);
-  --color-text: var(--color-text);
-  --color-muted: var(--color-muted);
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-night);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-garland);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgb(242 196 109 / 0.35);
+  }
 }
 
-body {
-  background: var(--color-night);
-  color: var(--color-text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+@layer utilities {
+  /* Горизонтальная прокрутка без полосы (карусель на телефоне). */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

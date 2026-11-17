@@ -14,6 +14,7 @@ export const site = {
     return tariffs.camera_visit.priceRub;
   },
   deliveryTime: "10–15 минут",
+  copyrightYear: 2026,
   contacts: {
     email: "hello@example.ru", // ЗАГЛУШКА
     telegram: "@example", // ЗАГЛУШКА
