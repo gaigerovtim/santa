@@ -1,0 +1,118 @@
+// Схема базы «Дед Мороз у вашей ёлки», версия 1.
+// Статусы и допустимые переходы описаны в lib/transition.ts.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  created
+  preview_generating
+  preview_ready
+  paid
+  generating
+  review
+  delivered
+  expired
+  needs_help
+  refunded
+}
+
+enum EventActor {
+  system
+  admin
+  customer
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  status          OrderStatus @default(created)
+  tariff          String
+  amountRub       Int         @map("amount_rub")
+  email           String
+  roomPhotoKey    String?     @map("room_photo_key")
+  /// Файлы по id шагов конвейера: frameA, frameB, preview, clip, final
+  artifacts       Json        @default("{}")
+  /// Данные формы для будущих тарифов (имя, текст, фото подарка)
+  inputs          Json        @default("{}")
+  previewRegens   Int         @default(0) @map("preview_regens")
+  shareToken      String      @unique @map("share_token")
+  paymentId       String?     @unique @map("payment_id")
+  paymentProvider String?     @map("payment_provider")
+  attempts        Int         @default(0)
+  costUsd         Decimal     @default(0) @map("cost_usd") @db.Decimal(10, 4)
+  lastError       String?     @map("last_error")
+  ipHash          String?     @map("ip_hash")
+  consentAt       DateTime    @map("consent_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  paidAt          DateTime?   @map("paid_at")
+  deliveredAt     DateTime?   @map("delivered_at")
+
+  events   OrderEvent[]
+  payments Payment[]
+
+  @@index([status])
+  @@index([email, createdAt])
+  @@index([ipHash, createdAt])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderEvent {
+  id         BigInt       @id @default(autoincrement())
+  orderId    String       @map("order_id") @db.Uuid
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  actor      EventActor   @default(system)
+  comment    String?
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
+}
+
+/// Платежи mock-провайдера (боевая ЮKassa хранит платежи у себя).
+model Payment {
+  id          String   @id
+  orderId     String   @map("order_id") @db.Uuid
+  provider    String
+  amountRub   Int      @map("amount_rub")
+  status      String   @default("pending") // pending | succeeded | canceled
+  refundedRub Int      @default(0) @map("refunded_rub")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+/// Загрузки фото до создания заказа — чтобы чистить брошенные (docs/decisions.md, п. 4).
+model Upload {
+  key       String   @id
+  orderId   String?  @map("order_id") @db.Uuid
+  ipHash    String?  @map("ip_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([orderId, createdAt])
+  @@map("uploads")
+}
+
+/// Настройки, меняемые из админки (например, manual_approval).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

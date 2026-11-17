@@ -1,5 +1,27 @@
-.DS_Store
-node_modules/
+# dependencies
+/node_modules
+
+# testing
+/coverage
+/test-results
+/playwright-report
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# env
 .env
 .env.*
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# claude
 .claude/settings.local.json

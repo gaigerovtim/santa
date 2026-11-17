@@ -1,0 +1,133 @@
+# Локальный запуск всего проекта: docker compose up --build
+# Значения по умолчанию подходят для разработки; переопределяются в .env (см. .env.example).
+name: santa
+
+x-app-env: &app-env
+  NODE_ENV: ${NODE_ENV:-development}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  DATABASE_URL: postgresql://santa:santa@postgres:5432/santa
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://s3:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+  S3_REGION: ${S3_REGION:-ru-central1}
+  S3_BUCKET: ${S3_BUCKET:-dedmoroz}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-santa-dev}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-santa-dev-secret}
+  SMTP_URL: smtp://mailpit:1025
+  MAIL_FROM: ${MAIL_FROM:-Дед Мороз <video@example.ru>}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+  SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me-0123456789}
+  IP_HASH_SALT: ${IP_HASH_SALT:-dev-ip-salt}
+  AI_PROVIDER: ${AI_PROVIDER:-mock}
+  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+  ENABLE_MOCKS: ${ENABLE_MOCKS:-true}
+  MOCK_IMAGE_DELAY_SEC: ${MOCK_IMAGE_DELAY_SEC:-8}
+  MOCK_VIDEO_DELAY_SEC: ${MOCK_VIDEO_DELAY_SEC:-30}
+  MOCK_FAILURE_RATE: ${MOCK_FAILURE_RATE:-0}
+  FAL_KEY: ${FAL_KEY:-}
+  YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+  YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+  VIDEO_CONCURRENCY: ${VIDEO_CONCURRENCY:-5}
+  PREVIEW_CONCURRENCY: ${PREVIEW_CONCURRENCY:-10}
+  MANUAL_APPROVAL: ${MANUAL_APPROVAL:-true}
+  ORDERS_ENABLED: ${ORDERS_ENABLED:-true}
+
+services:
+  web:
+    build: { context: ., dockerfile: Dockerfile.web }
+    environment: *app-env
+    ports: ["3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      s3-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: Dockerfile.worker }
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      s3-init: { condition: service_completed_successfully }
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  # Одноразовый: применяет миграции базы и завершается.
+  migrate:
+    build: { context: ., dockerfile: Dockerfile.worker }
+    environment: *app-env
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: santa
+      POSTGRES_PASSWORD: santa
+      POSTGRES_DB: santa
+    ports: ["5432:5432"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U santa -d santa"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # S3-совместимое хранилище. В ТЗ — MinIO, но его образы больше не публикуются,
+  # поэтому локально используется RustFS (тот же S3 API). В продакшене — Yandex Object Storage.
+  # Веб-консоль: http://localhost:9001/rustfs/console/ (логин и пароль — S3_ACCESS_KEY / S3_SECRET_KEY).
+  s3:
+    image: rustfs/rustfs:1.0.6
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-santa-dev}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-santa-dev-secret}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [s3-data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9000 || wget -q --spider http://127.0.0.1:9000/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # Одноразовый: создаёт бакет и CORS для загрузки из браузера.
+  s3-init:
+    image: amazon/aws-cli:2.27.50
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-santa-dev}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-santa-dev-secret}
+      AWS_DEFAULT_REGION: ${S3_REGION:-ru-central1}
+      BUCKET: ${S3_BUCKET:-dedmoroz}
+    entrypoint: ["/bin/sh", "/init/s3-init.sh"]
+    volumes: ["./docker/s3-init.sh:/init/s3-init.sh:ro"]
+    depends_on:
+      s3: { condition: service_healthy }
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
+volumes:
+  postgres-data:
+  redis-data:
+  s3-data:
