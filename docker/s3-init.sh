@@ -15,7 +15,7 @@ cat > /tmp/cors.json <<'EOF'
   "CORSRules": [
     {
       "AllowedOrigins": ["*"],
-      "AllowedMethods": ["GET", "PUT", "HEAD"],
+      "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
       "AllowedHeaders": ["*"],
       "ExposeHeaders": ["ETag"],
       "MaxAgeSeconds": 3600
