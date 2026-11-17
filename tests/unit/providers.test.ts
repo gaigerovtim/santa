@@ -81,3 +81,17 @@ describe("обёртка вызова провайдера", () => {
     expect(n).toBe(1);
   });
 });
+
+describe("доступность заглушек", async () => {
+  const { mocksAllowed } = await vi.importActual<typeof import("@/lib/env")>("@/lib/env");
+  const base = { NODE_ENV: "production" as const, ENABLE_MOCKS: false };
+
+  it("в продакшене /mock-pay и заглушки выключены", () => {
+    expect(mocksAllowed(base)).toBe(false);
+  });
+
+  it("включаются явным флагом ENABLE_MOCKS или вне продакшена", () => {
+    expect(mocksAllowed({ ...base, ENABLE_MOCKS: true })).toBe(true);
+    expect(mocksAllowed({ ...base, NODE_ENV: "development" })).toBe(true);
+  });
+});

@@ -14,12 +14,22 @@ const FINAL: readonly OrderStatusName[] = ["delivered", "expired", "refunded"];
 interface Props {
   token: string;
   initial: OrderView;
+  /** Покупатель вернулся со страницы оплаты, нажав «Отказаться». */
+  paymentCanceled?: boolean;
 }
 
-export function OrderScreen({ token, initial }: Props) {
+export function OrderScreen({ token, initial, paymentCanceled = false }: Props) {
   const [order, setOrder] = useState(initial);
   const [busy, setBusy] = useState<null | "pay" | "regen">(null);
   const [error, setError] = useState<string | null>(null);
+  const notice = paymentCanceled
+    ? "Оплата отменена — деньги не списаны. Можно оплатить, когда будете готовы."
+    : null;
+
+  // Убираем ?payment=canceled из адреса, чтобы сообщение не всплывало при обновлении страницы
+  useEffect(() => {
+    if (paymentCanceled) window.history.replaceState(null, "", window.location.pathname);
+  }, [paymentCanceled]);
 
   const refresh = useCallback(async () => {
     try {
@@ -79,6 +89,11 @@ export function OrderScreen({ token, initial }: Props) {
 
   return (
     <div className="mt-6" aria-live="polite">
+      {notice && order.status === "preview_ready" && (
+        <p className="mb-4 rounded-xl border border-garland/40 bg-garland/10 p-4" role="status">
+          {notice}
+        </p>
+      )}
       <StatusBody order={order} busy={busy} onPay={pay} onRegenerate={regenerate} />
       {error && (
         <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 p-4 text-danger" role="alert">

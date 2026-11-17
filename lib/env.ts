@@ -59,6 +59,6 @@ export function env(): Env {
 }
 
 /** Страница /mock-pay и заглушки доступны вне продакшена или по явному флагу. */
-export function mocksAllowed(e: Env = env()): boolean {
+export function mocksAllowed(e: Pick<Env, "NODE_ENV" | "ENABLE_MOCKS"> = env()): boolean {
   return e.NODE_ENV !== "production" || e.ENABLE_MOCKS;
 }

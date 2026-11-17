@@ -3,7 +3,6 @@
 name: santa
 
 x-app-env: &app-env
-  NODE_ENV: ${NODE_ENV:-development}
   APP_URL: ${APP_URL:-http://localhost:3000}
   DATABASE_URL: postgresql://santa:santa@postgres:5432/santa
   REDIS_URL: redis://redis:6379
