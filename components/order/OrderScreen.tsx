@@ -292,7 +292,7 @@ function Delivered({ order }: { order: OrderView }) {
 
   return (
     <section>
-      <CameraFrame>
+      <CameraFrame overlay={false}>
         {order.videoUrl ? (
           <video
             src={order.videoUrl}

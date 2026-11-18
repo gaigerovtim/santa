@@ -12,6 +12,7 @@ import { callProvider } from "@/lib/providers/call";
 import { getImageProvider, getVideoProvider } from "@/lib/providers";
 import { getObjectBuffer, putObject } from "@/lib/s3";
 import { makeWatermarkedPreview } from "@/lib/watermark";
+import { postprocessCamera } from "./steps/postprocess";
 import { prepareRoomPhoto } from "./steps/prepare-room-photo";
 
 const IMAGE_TIMEOUT_MS = 3 * 60 * 1000;
@@ -102,8 +103,15 @@ export async function runStep(ctx: PipelineContext, step: Step): Promise<void> {
       return;
     }
 
-    case "postprocess":
-      throw new Error("Шаг postprocess появится на этапе 6");
+    case "postprocess": {
+      // По умолчанию обрабатываем результат предыдущего видеошага (clip).
+      const clip = await loadArtifact(ctx, "clip");
+      const started = Date.now();
+      const final = await postprocessCamera(clip);
+      console.log(`[postprocess] заказ ${ctx.orderId}: ${step.preset} за ${Date.now() - started} мс`);
+      await saveArtifact(ctx, step.id, final, "mp4");
+      return;
+    }
   }
 }
 

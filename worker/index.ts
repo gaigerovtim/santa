@@ -1,17 +1,13 @@
 /**
  * Воркер очередей: preview (кадр-превью) и video (после оплаты).
- * Обработчик очереди video появится на этапе 6.
  */
-import { Worker, type Job } from "bullmq";
+import { Worker } from "bullmq";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { QUEUE_PREVIEW, QUEUE_VIDEO, type OrderJobData } from "@/lib/queue";
+import { QUEUE_PREVIEW, QUEUE_VIDEO } from "@/lib/queue";
 import { redis } from "@/lib/redis";
 import { processPreview } from "./jobs/preview";
-
-async function notImplemented(job: Job<OrderJobData>) {
-  throw new Error(`Обработчик очереди ${job.queueName} ещё не реализован (заказ ${job.data.orderId})`);
-}
+import { processVideo } from "./jobs/video";
 
 async function main() {
   const e = env();
@@ -24,9 +20,12 @@ async function main() {
       connection: redis(),
       concurrency: e.PREVIEW_CONCURRENCY,
     }),
-    new Worker(QUEUE_VIDEO, notImplemented, {
+    new Worker(QUEUE_VIDEO, processVideo, {
       connection: redis(),
       concurrency: e.VIDEO_CONCURRENCY,
+      // Видео идёт минутами: блокировка задачи продлевается автоматически,
+      // а если воркер упал — через lockDuration задача вернётся в очередь.
+      lockDuration: 60_000,
     }),
   ];
 

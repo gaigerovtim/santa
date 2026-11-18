@@ -44,6 +44,8 @@ vi.mock("@/lib/queue", () => ({
   getQueue: () => ({ add: vi.fn(async (_n: string, data: unknown, opts: { jobId: string }) => state.jobs.push({ data, opts })) }),
 }));
 vi.mock("@/lib/env", () => ({ env: () => ({ NODE_ENV: "test", APP_URL: "http://localhost:3000" }) }));
+const mails = vi.hoisted(() => ({ paid: 0 }));
+vi.mock("@/lib/notify", () => ({ notifyPaid: vi.fn(async () => { mails.paid++; return true; }) }));
 
 import { buildNotification, handlePaymentNotification } from "@/lib/payments";
 
@@ -56,6 +58,7 @@ describe("webhook оплаты", () => {
     state.transitions = [];
     state.jobs = [];
     state.updates = [];
+    mails.paid = 0;
   });
 
   it("оплата → статус paid и задача в очередь video", async () => {
@@ -71,6 +74,7 @@ describe("webhook оплаты", () => {
     expect(again).toEqual({ handled: true, action: "already_paid", orderId: "o1" });
     expect(state.transitions).toEqual(["paid"]);
     expect(state.jobs).toHaveLength(1);
+    expect(mails.paid).toBe(1); // письмо «Заказ оплачен» — одно, несмотря на повтор
   });
 
   it("поддельное уведомление: тело говорит «оплачено», провайдер — нет", async () => {

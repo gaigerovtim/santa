@@ -1,14 +1,16 @@
 # Воркер очередей: конвейер генерации, ffmpeg-постобработка, письма, очистка.
 # Этот же образ применяет миграции базы (сервис migrate в docker-compose.yml).
 FROM node:24-alpine
-RUN apk add --no-cache openssl libc6-compat ffmpeg font-dejavu
+RUN apk add --no-cache openssl libc6-compat ffmpeg font-dejavu \
+  && addgroup -S app && adduser -S app -G app \
+  && mkdir /app && chown app:app /app
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package.json package-lock.json ./
-COPY prisma ./prisma
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
 USER app
+# Файлы сразу копируются с владельцем app — без медленного chown -R по node_modules.
+COPY --chown=app:app package.json package-lock.json ./
+COPY --chown=app:app prisma ./prisma
+RUN npm ci
+COPY --chown=app:app . .
+RUN npx prisma generate
 CMD ["npx", "tsx", "worker/index.ts"]

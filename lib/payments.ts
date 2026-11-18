@@ -9,6 +9,7 @@ import { site } from "@/config/site";
 import { tariffs, isTariffKey } from "@/config/tariffs";
 import { db } from "./db";
 import { env } from "./env";
+import { notifyPaid } from "./notify";
 import { getPaymentProvider } from "./providers";
 import { getQueue, QUEUE_VIDEO, type OrderJobData } from "./queue";
 import { transition } from "./transition";
@@ -119,6 +120,8 @@ export async function handlePaymentNotification(body: unknown): Promise<Notifica
     { jobId: `video-${order.id}`, attempts: 1 },
   );
   console.log(`[payment] заказ ${order.id}: оплачен, задача видео поставлена`);
+  // Письмо — только при первом переходе в paid; ошибка почты не ломает обработку оплаты.
+  await notifyPaid(moved);
   return { handled: true, action: "paid", orderId: order.id };
 }
 
