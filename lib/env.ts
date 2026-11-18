@@ -28,7 +28,7 @@ const schema = z.object({
   IP_HASH_SALT: z.string().default(""),
 
   AI_PROVIDER: z.enum(["mock", "mock2", "fal"]).default("mock"),
-  PAYMENT_PROVIDER: z.enum(["mock", "yookassa"]).default("mock"),
+  PAYMENT_PROVIDER: z.enum(["mock", "robokassa", "yookassa"]).default("mock"),
   MOCK_IMAGE_DELAY_SEC: z.coerce.number().min(0).default(8),
   MOCK_VIDEO_DELAY_SEC: z.coerce.number().min(0).default(30),
   MOCK_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
@@ -36,6 +36,15 @@ const schema = z.object({
   FAL_KEY: z.string().default(""),
   YOOKASSA_SHOP_ID: z.string().default(""),
   YOOKASSA_SECRET_KEY: z.string().default(""),
+
+  ROBOKASSA_LOGIN: z.string().default(""),
+  ROBOKASSA_PASSWORD1: z.string().default(""),
+  ROBOKASSA_PASSWORD2: z.string().default(""),
+  ROBOKASSA_TEST: bool.default(true),
+  ROBOKASSA_HASH: z.enum(["md5", "sha256", "sha384", "sha512"]).default("md5"),
+  ROBOKASSA_RECEIPT: bool.default(false),
+  /** Подтверждать оплату по подписанной переадресации SuccessURL, если ResultURL недоступен (локально). */
+  ROBOKASSA_TRUST_SUCCESS_URL: bool.default(false),
 
   VIDEO_CONCURRENCY: z.coerce.number().int().min(1).default(5),
   PREVIEW_CONCURRENCY: z.coerce.number().int().min(1).default(10),

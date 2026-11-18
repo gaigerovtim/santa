@@ -32,7 +32,7 @@ export async function startPayment(token: string, origin: string): Promise<PayRe
   const { paymentId, confirmationUrl } = await provider.createPayment({
     orderId: order.id,
     amountRub: order.amountRub,
-    description: `${title} — заказ ${order.id.slice(0, 8)}`,
+    description: `${title}, заказ ${order.id.slice(0, 8)}`,
     returnUrl: `${base}/order/${token}`,
   });
   await db.order.update({
@@ -94,6 +94,11 @@ export async function handlePaymentNotification(body: unknown): Promise<Notifica
       data: { lastError: `Сумма платежа ${verified.amountRub} ₽ не совпадает с заказом ${order.amountRub} ₽` },
     });
     return { handled: false, reason: "amount_mismatch" };
+  }
+
+  // Повтор уведомления об уже учтённой оплате (заказ мог уйти дальше — generating, delivered…).
+  if (order.paidAt && order.paymentId === object.id) {
+    return { handled: true, action: "already_paid", orderId: order.id };
   }
 
   // Смена статуса и привязка платежа — в одной транзакции, условно (повтор не проведёт второй раз).

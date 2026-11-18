@@ -80,9 +80,11 @@ model OrderEvent {
   @@map("order_events")
 }
 
-/// Платежи mock-провайдера (боевая ЮKassa хранит платежи у себя).
+/// Платежи mock-провайдера и Robokassa (боевая ЮKassa хранит платежи у себя).
 model Payment {
   id          String   @id
+  /// Номер счёта для Robokassa (InvId — целое число, уникальное в магазине).
+  invId       Int      @unique @default(autoincrement()) @map("inv_id")
   orderId     String   @map("order_id") @db.Uuid
   provider    String
   amountRub   Int      @map("amount_rub")

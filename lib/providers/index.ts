@@ -32,12 +32,16 @@ export function getVideoProvider(e: Pick<Env, "AI_PROVIDER"> = env()): VideoProv
   }
 }
 
-/** Провайдер оплаты подключается на этапе 5. */
+/** Провайдер оплаты: mock — тестовая страница /mock-pay, robokassa — Robokassa (в т. ч. тестовый режим). */
 export async function getPaymentProvider(e: Pick<Env, "PAYMENT_PROVIDER"> = env()): Promise<PaymentProvider> {
   switch (e.PAYMENT_PROVIDER) {
     case "mock": {
       const { mockPaymentProvider } = await import("./mock/payment");
       return mockPaymentProvider;
+    }
+    case "robokassa": {
+      const { robokassaProvider } = await import("./robokassa");
+      return robokassaProvider;
     }
     case "yookassa":
       throw new ProviderNotConfiguredError("PAYMENT_PROVIDER=yookassa: реализация появится на следующем этапе");

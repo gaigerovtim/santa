@@ -77,6 +77,13 @@ describe("webhook оплаты", () => {
     expect(mails.paid).toBe(1); // письмо «Заказ оплачен» — одно, несмотря на повтор
   });
 
+  it("повтор, когда заказ уже ушёл дальше paid (generating), — тоже повтор, без ошибки в заказе", async () => {
+    state.order = { id: "o1", status: "generating", amountRub: 390, paidAt: new Date(), paymentId: "mock_1" } as typeof state.order;
+    expect(await handlePaymentNotification(succeeded)).toEqual({ handled: true, action: "already_paid", orderId: "o1" });
+    expect(state.updates).toHaveLength(0);
+    expect(state.jobs).toHaveLength(0);
+  });
+
   it("поддельное уведомление: тело говорит «оплачено», провайдер — нет", async () => {
     state.payment = { status: "pending", amountRub: 390, orderId: "o1" };
     const r = await handlePaymentNotification(succeeded);
