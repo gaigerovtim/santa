@@ -76,18 +76,62 @@ MOCK_FAILURE_RATE=1 MOCK_IMAGE_DELAY_SEC=0 npm run worker
 | `npm test` | Unit-тесты (vitest) |
 | `npm run lint` | Линтер |
 | `npm run typecheck` | Проверка типов |
+| `npm run test:e2e` | E2E на Playwright: iPhone 14 и компьютер 1440 px (нужен запущенный `docker compose`) |
+| `npm run test:load` | Нагрузочный тест: 20 заказов одновременно до доставки (`LOAD_ORDERS=50` — больше) |
 | `npm run db:migrate` | Новая миграция после правки `prisma/schema.prisma` |
 | `npm run db:deploy` | Применить миграции |
+
+## Тесты
+
+```bash
+npm run lint && npm run typecheck && npm test   # быстрые проверки, без Docker
+docker compose up -d --build                     # стенд для e2e и нагрузки
+npx playwright install chromium webkit           # один раз — браузеры для e2e
+npm run test:e2e
+npm run test:load
+```
+
+E2E и нагрузочный тест на время прогона ускоряют заглушки (хеш Redis `mock:config`) и выключают ручное
+одобрение, а после — возвращают как было. Отчёт e2e: `npx playwright show-report`.
+
+## Админка
+
+http://localhost:3000/admin — пароль из `ADMIN_PASSWORD`. Список заказов с фильтром и поиском, счётчики за сегодня,
+карточка заказа с файлами и историей, действия «Одобрить», «Перегенерировать», «Вернуть деньги», «Отправить письмо
+повторно», переключатель «Ручное одобрение».
+
+## Хранение и очистка
+
+Воркер раз в сутки (04:00 МСК) удаляет исходные фото через 72 часа после доставки, видео — через 30 дней,
+неоплаченные заказы через 7 дней переводит в «Истёк» и удаляет их файлы, загрузки без заказа — через 24 часа.
+
+| Скрипт | Что делает |
+| --- | --- |
+| `docker compose exec worker npx tsx scripts/cleanup-now.ts` | Очистка прямо сейчас |
+| `docker compose exec worker npx tsx scripts/requeue-paid.ts` | Поставить в очередь застрявшие оплаченные заказы |
+| `npx tsx scripts/make-mock-assets.ts` | Пересоздать файлы-заглушки |
+
+## Перед запуском в продакшене
+
+- `ENABLE_MOCKS=false`, `NODE_ENV=production`; `ADMIN_PASSWORD` и `SESSION_SECRET` (от 32 символов) — длинные случайные.
+- Сайт — за обратным прокси (nginx), который выставляет `X-Real-IP`: по нему считаются лимиты.
+- Реквизиты и контакты — в `config/site.ts`, тексты оферты и политики — в `content/` (согласовать с юристом).
+- Звук `assets/sfx/steps-bells.wav` — заменить звуком с коммерческой лицензией.
 
 ## Структура
 
 ```text
-app/          страницы и API (Next.js App Router)
-config/       tariffs.ts — тарифы и конвейер, prompts.ts — промпты, site.ts — тексты и реквизиты
-lib/          db, redis, queue, env, transition (смена статусов заказа)
-worker/       обработчики очередей
+app/          страницы и API (Next.js App Router), app/admin — админка
+components/   UI-компоненты: CameraFrame, Uploader (create/), OrderScreen (order/), admin/…
+config/       tariffs.ts — тарифы и конвейер, prompts.ts — промпты, site.ts и home.ts — тексты
+content/      offer.md, privacy.md
+emails/       шаблоны писем
+lib/          db, redis, queue, s3, mail, limits, transition, providers/ (точка подключения нейросетей и оплаты)
+worker/       обработчики очередей и шаги конвейера (steps/)
+assets/       mock/ — заглушки, sfx/ — звук, fonts/ — шрифт таймкода
 prisma/       схема базы и миграции
-tests/        unit-тесты
+tests/        unit/ (vitest), e2e/ (Playwright)
+scripts/      нагрузочный тест, очистка, служебные скрипты
 docker/       скрипты инициализации контейнеров
 ```
 

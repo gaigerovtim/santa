@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/env", () => ({ env: () => ({ MOCK_IMAGE_DELAY_SEC: 0, MOCK_VIDEO_DELAY_SEC: 0, MOCK_FAILURE_RATE: 0 }) }));
+vi.mock("@/lib/env", async (orig) => ({
+  ...(await orig<typeof import("@/lib/env")>()),
+  env: () => ({ NODE_ENV: "test", ENABLE_MOCKS: false, MOCK_IMAGE_DELAY_SEC: 0, MOCK_VIDEO_DELAY_SEC: 0, MOCK_FAILURE_RATE: 0 }),
+}));
+vi.mock("@/lib/redis", () => ({ redis: () => ({ hgetall: async () => ({}) }) }));
 
 import { getImageProvider, getVideoProvider, ProviderNotConfiguredError } from "@/lib/providers";
 import { callProvider, ProviderCallFailed, ProviderTimeoutError } from "@/lib/providers/call";

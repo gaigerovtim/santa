@@ -46,9 +46,10 @@ describe("лимиты", () => {
     expect(hashIp("203.0.113.7", "other")).not.toBe(h);
   });
 
-  it("IP берётся из первого адреса X-Forwarded-For", () => {
-    expect(clientIp(new Headers({ "x-forwarded-for": "198.51.100.1, 10.0.0.1" }))).toBe("198.51.100.1");
-    expect(clientIp(new Headers({ "x-real-ip": "198.51.100.2" }))).toBe("198.51.100.2");
+  it("IP: подставленный клиентом адрес в начале X-Forwarded-For не помогает обойти лимит", () => {
+    // клиент прислал «1.1.1.1», наш прокси дописал реальный адрес в конец
+    expect(clientIp(new Headers({ "x-forwarded-for": "1.1.1.1, 198.51.100.1" }))).toBe("198.51.100.1");
+    expect(clientIp(new Headers({ "x-real-ip": "198.51.100.2", "x-forwarded-for": "1.1.1.1" }))).toBe("198.51.100.2");
     expect(clientIp(new Headers())).toBe("unknown");
   });
 });

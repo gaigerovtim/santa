@@ -102,6 +102,15 @@ export function CreateForm({ priceRub }: { priceRub: number }) {
     [startUpload],
   );
 
+  // Форма приходит потоком и «оживает» не сразу. Если файл выбрали раньше (быстрый палец
+  // на медленном телефоне), событие change до React не дошло — подхватываем файл при оживлении.
+  useEffect(() => {
+    const early = fileInput.current?.files?.[0];
+    if (!early) return;
+    if (fileInput.current) fileInput.current.value = "";
+    queueMicrotask(() => void handleFile(early));
+  }, [handleFile]);
+
   const pickFile = () => fileInput.current?.click();
 
   const onDrop = (e: DragEvent) => {

@@ -1,7 +1,11 @@
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/env", () => ({ env: () => ({ MOCK_IMAGE_DELAY_SEC: 0, MOCK_FAILURE_RATE: 0 }) }));
+vi.mock("@/lib/env", async (orig) => ({
+  ...(await orig<typeof import("@/lib/env")>()),
+  env: () => ({ NODE_ENV: "test", ENABLE_MOCKS: false, MOCK_IMAGE_DELAY_SEC: 0, MOCK_FAILURE_RATE: 0 }),
+}));
+vi.mock("@/lib/redis", () => ({ redis: () => ({ hgetall: async () => ({}) }) }));
 
 import { mockImageProvider } from "@/lib/providers/mock/image";
 import { makeWatermarkedPreview, PREVIEW_WIDTH } from "@/lib/watermark";

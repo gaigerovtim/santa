@@ -4,7 +4,8 @@
 import { Worker } from "bullmq";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { QUEUE_PREVIEW, QUEUE_VIDEO } from "@/lib/queue";
+import { runCleanup } from "@/lib/cleanup";
+import { getQueue, QUEUE_MAINTENANCE, QUEUE_PREVIEW, QUEUE_VIDEO } from "@/lib/queue";
 import { redis } from "@/lib/redis";
 import { processPreview } from "./jobs/preview";
 import { processVideo } from "./jobs/video";
@@ -27,7 +28,19 @@ async function main() {
       // а если воркер упал — через lockDuration задача вернётся в очередь.
       lockDuration: 60_000,
     }),
+    // Обслуживание: ежедневная очистка по срокам хранения.
+    new Worker(QUEUE_MAINTENANCE, async () => void (await runCleanup()), {
+      connection: redis(),
+      concurrency: 1,
+    }),
   ];
+
+  // Раз в сутки в 04:00 по Москве. upsert — повторный запуск воркера не плодит расписания.
+  await getQueue(QUEUE_MAINTENANCE).upsertJobScheduler(
+    "daily-cleanup",
+    { pattern: "0 4 * * *", tz: "Europe/Moscow" },
+    { name: "cleanup" },
+  );
 
   for (const w of workers) {
     w.on("failed", (job, err) => console.error(`[${w.name}] задача ${job?.id}:`, err.message));

@@ -5,9 +5,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { env } from "@/lib/env";
 import type { ImageEditProvider } from "../types";
-import { MOCK_DIR, maybeFail, mockDelay } from "./common";
+import { MOCK_DIR, getMockConfig, maybeFail, mockDelay } from "./common";
 
 let silhouetteCache: Buffer | null = null;
 async function silhouette(): Promise<Buffer> {
@@ -50,8 +49,9 @@ export async function overlayDemo(base: Buffer, label: string): Promise<Buffer> 
 export const mockImageProvider: ImageEditProvider = {
   name: "mock",
   async editImage({ images }) {
-    await mockDelay(env().MOCK_IMAGE_DELAY_SEC);
-    maybeFail("кадра");
+    const cfg = await getMockConfig();
+    await mockDelay(cfg.imageDelaySec);
+    maybeFail("кадра", cfg.failureRate);
     if (!images.length) throw new Error("Нет исходного изображения");
     return { image: await overlayDemo(images[0], "ДЕМО"), costUsd: 0.04 };
   },

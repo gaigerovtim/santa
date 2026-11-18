@@ -11,17 +11,23 @@ export const fontDisplay = Playfair_Display({
   display: "swap",
 });
 
-/** Основной текст (вариативный шрифт: все жирности в одном файле на алфавит). */
+/**
+ * Основной текст (вариативный шрифт: все жирности в одном файле на алфавит).
+ * Без предзагрузки: иначе на медленном мобильном интернете он отнимает канал у картинки
+ * первого экрана. Текст на долю секунды покажется системным шрифтом (display: swap).
+ */
 export const fontSans = Inter({
   subsets: ["latin", "cyrillic"],
   variable: "--nf-sans",
   display: "swap",
+  preload: false,
+  adjustFontFallback: true,
 });
 
 /** «Камерные» подписи: таймкод, REC, КАМЕРА 2. Мелкий декоративный текст — без предзагрузки. */
 export const fontMono = JetBrains_Mono({
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "600"],
+  // Без списка жирностей — вариативный шрифт: один файл на алфавит вместо двух.
   variable: "--nf-mono",
   display: "swap",
   preload: false,

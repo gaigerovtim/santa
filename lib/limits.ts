@@ -25,11 +25,20 @@ export function hashIp(ip: string, salt = env().IP_HASH_SALT): string {
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 
-/** IP клиента из заголовков прокси; первый адрес в X-Forwarded-For — исходный. */
+/**
+ * IP клиента. Сайт стоит за одним обратным прокси (nginx), который дописывает адрес клиента
+ * в конец X-Forwarded-For. Первые адреса клиент может подставить сам, поэтому берём последний —
+ * его добавил наш прокси. X-Real-IP прокси выставляет целиком — он надёжнее всего.
+ */
 export function clientIp(headers: Headers): string {
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
   const fwd = headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  if (fwd) {
+    const parts = fwd.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return "unknown";
 }
 
 export function normalizeEmail(email: string) {
